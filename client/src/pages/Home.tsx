@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 // ✅ IMPORT CORREGIDO
-import heroImage from "../attached_assets/Diseno-sin-titulo.png";
+import heroImage from "../attached_assets/Diseno-sin-título.png";
 
 export default function Home() {
   const { data: news, isLoading: loadingNews } = useNews();
