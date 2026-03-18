@@ -1,3 +1,4 @@
+const API_URL = "https://guia-del-buen-vecino-backend.onrender.com";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
@@ -29,7 +30,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+const res = await fetch(API_URL + queryKey.join("/"), {
       credentials: "include",
     });
 
