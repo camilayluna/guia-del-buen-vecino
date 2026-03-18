@@ -19,11 +19,11 @@ export async function registerRoutes(
     res.status(201).json({ url: fileUrl, filename: req.file.filename });
   });
 
-  // News
- // app.get(api.news.list.path, async (req, res) => {
-  //  const items = await storage.getNews();
-   // res.json(items);
-  //});
+   News
+ app.get(api.news.list.path, async (req, res) => {
+    const items = await storage.getNews();
+    res.json(items);
+  });
   app.get("/test", (req, res) => {
   res.json({ ok: true });
 });
