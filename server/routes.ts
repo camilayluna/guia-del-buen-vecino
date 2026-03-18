@@ -193,7 +193,7 @@ export async function registerRoutes(
   });
 
   // Seed DB with mock data if needed
-  await seedDatabase();
+  //await seedDatabase();
 
   return httpServer;
 }
