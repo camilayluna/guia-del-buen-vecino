@@ -20,10 +20,13 @@ export async function registerRoutes(
   });
 
   // News
-  app.get(api.news.list.path, async (req, res) => {
-    const items = await storage.getNews();
-    res.json(items);
-  });
+ // app.get(api.news.list.path, async (req, res) => {
+  //  const items = await storage.getNews();
+   // res.json(items);
+  //});
+  app.get("/test", (req, res) => {
+  res.json({ ok: true });
+});
 
   app.post(api.news.create.path, async (req, res) => {
     try {
