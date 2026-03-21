@@ -5,6 +5,24 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
+app.get("/crear-tablas", async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cultural_registrations (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        phone TEXT,
+        activity TEXT
+      );
+    `);
+
+    res.send("Tabla creada correctamente");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error creando tabla");
+  }
+});
 const httpServer = createServer(app);
 
 declare module "http" {
