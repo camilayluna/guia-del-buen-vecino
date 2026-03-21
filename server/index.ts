@@ -3,7 +3,7 @@ import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-
+import { pool } from "./db";
 const app = express();
 app.get("/crear-tablas", async (req, res) => {
   try {
