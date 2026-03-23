@@ -156,5 +156,6 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
-  export const storage = new DatabaseStorage();
+ 
 })();
+ export const storage = new DatabaseStorage();
