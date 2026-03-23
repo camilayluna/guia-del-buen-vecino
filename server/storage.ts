@@ -1,144 +1,159 @@
-import { db, pool } from "./db";
-import {
-  news, publicWorks, events, complaints, tramites, culturalRegistrations,
-  type News, type PublicWork, type Event, type Complaint, type Tramite, type CulturalRegistration,
-  type InsertNews, type InsertPublicWork, type InsertEvent, type InsertComplaint, type InsertTramite, type InsertCulturalRegistration
-} from "@shared/schema";
-import { eq } from "drizzle-orm";
+import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
+import { registerRoutes } from "./routes";
+import { serveStatic } from "./static";
+import { createServer } from "http";
+import { pool } from "./db"; // 👈 IMPORTANTE
 
-export interface IStorage {
-  getNews(): Promise<News[]>;
-  createNews(item: InsertNews): Promise<News>;
-  deleteNews(id: number): Promise<void>;
+const app = express();
 
-  getPublicWorks(): Promise<PublicWork[]>;
-  createPublicWork(item: InsertPublicWork): Promise<PublicWork>;
-  updatePublicWorkStatus(id: number, status: string): Promise<PublicWork | undefined>;
-  deletePublicWork(id: number): Promise<void>;
+// 🔥 RUTA PARA CREAR TODA LA BASE DE DATOS
+app.get("/init-db", async (req, res) => {
+  try {
+    await pool.query(`
 
-  getEvents(): Promise<Event[]>;
-  createEvent(item: InsertEvent): Promise<Event>;
-  deleteEvent(id: number): Promise<void>;
+      CREATE TABLE IF NOT EXISTS news (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        content TEXT,
+        image TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
 
-  getComplaints(): Promise<Complaint[]>;
-  createComplaint(item: InsertComplaint): Promise<Complaint>;
-  updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined>;
+      CREATE TABLE IF NOT EXISTS public_works (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        description TEXT,
+        status TEXT
+      );
 
-  getTramites(): Promise<Tramite[]>;
-  createTramite(item: InsertTramite): Promise<Tramite>;
-  deleteTramite(id: number): Promise<void>;
+      CREATE TABLE IF NOT EXISTS events (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        description TEXT,
+        date TEXT
+      );
 
-  getCulturalRegistrations(): Promise<CulturalRegistration[]>;
-  createCulturalRegistration(item: InsertCulturalRegistration): Promise<CulturalRegistration>;
-  deleteCulturalRegistration(id: number): Promise<void>;
+      CREATE TABLE IF NOT EXISTS complaints (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        message TEXT,
+        status TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS tramites (
+        id SERIAL PRIMARY KEY,
+        title TEXT,
+        description TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS cultural_registrations (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        phone TEXT,
+        activity TEXT
+      );
+
+    `);
+
+    res.send("Base de datos lista 🔥");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error creando tablas");
+  }
+});
+
+const httpServer = createServer(app);
+
+declare module "http" {
+  interface IncomingMessage {
+    rawBody: unknown;
+  }
 }
 
-export class DatabaseStorage implements IStorage {
-  async getNews(): Promise<News[]> {
-    return await db.select().from(news);
-  }
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 
-  async createNews(item: InsertNews): Promise<News> {
-    const [row] = await db.insert(news).values(item).returning();
-    return row;
-  }
+app.use(express.urlencoded({ extended: false }));
 
-  async deleteNews(id: number): Promise<void> {
-    await db.delete(news).where(eq(news.id, id));
-  }
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
-  async getPublicWorks(): Promise<PublicWork[]> {
-    return await db.select().from(publicWorks);
-  }
+export function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 
-  async createPublicWork(item: InsertPublicWork): Promise<PublicWork> {
-    const [row] = await db.insert(publicWorks).values(item).returning();
-    return row;
-  }
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
-  async updatePublicWorkStatus(id: number, status: string): Promise<PublicWork | undefined> {
-    const [row] = await db.update(publicWorks).set({ status }).where(eq(publicWorks.id, id)).returning();
-    return row;
-  }
+app.use((req, res, next) => {
+  const start = Date.now();
+  const pathReq = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-  async deletePublicWork(id: number): Promise<void> {
-    await db.delete(publicWorks).where(eq(publicWorks.id, id));
-  }
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
 
-  async getEvents(): Promise<Event[]> {
-    return await db.select().from(events);
-  }
-
-  async createEvent(item: InsertEvent): Promise<Event> {
-    const [row] = await db.insert(events).values(item).returning();
-    return row;
-  }
-
-  async deleteEvent(id: number): Promise<void> {
-    await db.delete(events).where(eq(events.id, id));
-  }
-
-  async getComplaints(): Promise<Complaint[]> {
-    return await db.select().from(complaints);
-  }
-
-  async createComplaint(item: InsertComplaint): Promise<Complaint> {
-    const [row] = await db.insert(complaints).values(item).returning();
-    return row;
-  }
-
-  async updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined> {
-    const [row] = await db.update(complaints).set({ status }).where(eq(complaints.id, id)).returning();
-    return row;
-  }
-
-  async getTramites(): Promise<Tramite[]> {
-    return await db.select().from(tramites);
-  }
-
-  async createTramite(item: InsertTramite): Promise<Tramite> {
-    const [row] = await db.insert(tramites).values(item).returning();
-    return row;
-  }
-
-  async deleteTramite(id: number): Promise<void> {
-    await db.delete(tramites).where(eq(tramites.id, id));
-  }
-
-  async getCulturalRegistrations(): Promise<CulturalRegistration[]> {
-    return await db.select().from(culturalRegistrations);
-  }
-
-  async createCulturalRegistration(item: InsertCulturalRegistration): Promise<CulturalRegistration> {
-    try {
-      const [row] = await db.insert(culturalRegistrations).values(item).returning();
-      return row;
-    } catch (error: any) {
-
-      // 👇 si la tabla no existe, la creamos
-      if (error.message.includes("does not exist")) {
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS cultural_registrations (
-            id SERIAL PRIMARY KEY,
-            name TEXT,
-            email TEXT,
-            phone TEXT,
-            activity TEXT
-          );
-        `);
-
-        // 👇 reintenta guardar
-        const [row] = await db.insert(culturalRegistrations).values(item).returning();
-        return row;
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (pathReq.startsWith("/api")) {
+      let logLine = `${req.method} ${pathReq} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
-      throw error;
+      log(logLine);
     }
+  });
+
+  next();
+});
+
+(async () => {
+  await registerRoutes(httpServer, app);
+
+  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    console.error("Internal Server Error:", err);
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    return res.status(status).json({ message });
+  });
+
+  if (process.env.NODE_ENV === "production") {
+    serveStatic(app);
+  } else {
+    const { setupVite } = await import("./vite");
+    await setupVite(httpServer, app);
   }
 
-  async deleteCulturalRegistration(id: number): Promise<void> {
-    await db.delete(culturalRegistrations).where(eq(culturalRegistrations.id, id));
-  }
-}
+  const port = parseInt(process.env.PORT || "5000", 10);
 
-export const storage = new DatabaseStorage();
+  httpServer.listen(
+    {
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
+})();
