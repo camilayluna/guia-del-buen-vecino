@@ -4,12 +4,18 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
+// 🔥 NO romper el server si falta la variable
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.warn("⚠️ DATABASE_URL no está definida");
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-//export const db = drizzle(pool, { schema });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // 🔥 CLAVE para Render
+  },
+});
+
+// Podés usar con o sin schema
 export const db = drizzle(pool);
+// export const db = drizzle(pool, { schema });
