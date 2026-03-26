@@ -4,25 +4,8 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { pool } from "./db";
-const app = express();
-app.get("/crear-tablas", async (req, res) => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS cultural_registrations (
-        id SERIAL PRIMARY KEY,
-        name TEXT,
-        email TEXT,
-        phone TEXT,
-        activity TEXT
-      );
-    `);
 
-    res.send("Tabla creada correctamente");
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error creando tabla");
-  }
-});
+const app = express();
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -41,7 +24,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Serve uploaded files
+// Servir archivos subidos
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
 export function log(message: string, source = "express") {
@@ -55,9 +38,10 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Logger de requests
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
+  const reqPath = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -68,12 +52,11 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (reqPath.startsWith("/api")) {
+      let logLine = `${req.method} ${reqPath} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       log(logLine);
     }
   });
@@ -82,8 +65,30 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // 🔥 PRIMERO registrar rutas del sistema
   await registerRoutes(httpServer, app);
 
+  // 🔥 DESPUÉS agregar tu ruta personalizada (IMPORTANTE)
+  app.get("/crear-tablas", async (req, res) => {
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS cultural_registrations (
+          id SERIAL PRIMARY KEY,
+          name TEXT,
+          email TEXT,
+          phone TEXT,
+          activity TEXT
+        );
+      `);
+
+      res.send("Tabla creada correctamente 🔥");
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Error creando tabla");
+    }
+  });
+
+  // Manejo de errores
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -97,9 +102,7 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Producción / desarrollo
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -107,11 +110,9 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Puerto (Render usa process.env.PORT)
   const port = parseInt(process.env.PORT || "5000", 10);
+
   httpServer.listen(
     {
       port,
