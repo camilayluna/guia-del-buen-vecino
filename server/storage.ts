@@ -158,4 +158,4 @@ app.use((req, res, next) => {
   );
  
 })();
- export const storage = new DatabaseStorage();
+export const storage = {}; 
